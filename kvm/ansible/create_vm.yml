@@ -1,0 +1,55 @@
+---
+- name: Create a KVM virtual machine using libvirt
+  hosts: localhost
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Create a disk image for the VM
+      community.libvirt.libvirt_volume:
+        name: myvm.qcow2
+        pool: default
+        capacity: 20G  # Taille du disque
+        allocation: 10G  # Taille initiale allouée
+        format: qcow2
+        state: present
+
+    - name: Define and create the virtual machine
+      community.libvirt.libvirt_domain:
+        name: myvm
+        state: running
+        memory: 2048  # Taille de la RAM en Mo
+        vcpu: 2  # Nombre de vCPUs
+        disks:
+          - name: myvm.qcow2
+            pool: default
+            device: disk
+            bus: virtio
+            cache: none
+            format: qcow2
+        networks:
+          - network: default
+            model: virtio
+        graphics:
+          type: vnc
+          listen: 0.0.0.0
+          port: -1
+        boot:
+          devices:
+            - hd
+        console:
+          type: pty
+        clock:
+          offset: utc
+        os_type: hvm
+        arch: x86_64
+        machine: pc
+
+    - name: Attach an ISO file to the VM for installation
+      community.libvirt.libvirt_domain:
+        name: myvm
+        state: running
+        disks:
+          - name: /path/to/installer.iso
+            device: cdrom
+            bus: ide
+        command: update
